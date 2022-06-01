@@ -7,256 +7,48 @@ editor_options:
   chunk_output_type: console
 ---
 
-#
+# AULA 4
+
+## Introdução ao R/qtl
+
+O pacote R é uma ferramenta importante para quem trabalha com linkage e mapeamento QTL.
+
+Para usar, precisará instalá-lo primeiro. Podemos fazer isso usando a função. Em seguida, podemos carregar o pacote em R usando a função: qtlinstall.packageslibrary
 
 
-#AULA 4
-
-##Análise de ligação I: segregação de marcadores, cálculo da fração de recombinação dois-pontos, e formação dos grupos de ligação
+### Análise de ligação I: segregação de marcadores, cálculo da fração de recombinação dois-pontos, e formação dos grupos de ligação.
 
 ```{r}
 library(qtl)
 ```
 
+## Dados do milho
 
 ```{r}
 population_Z006 <- read.cross(format="csv", file="population_z006.csv", genotypes=c("0","1","2"), crosstype = "riself")
 ```
 
-## -Read the following data:
-##	 185  individuals
-##	 1106  markers
-##	 29  phenotypes
-## -Cross type: riself
+Para executar a análise com os dados do mouse, precisamos carregar o conjunto de dados usando uma função específica do pacote chamado . Também podemos usar funções associadas, como e inspecionar os dados com mais cuidado:qtlread.crosssummarygeno.image
+
+#### -DADOS:
+#####	 185  individuos
+#####	 1106  marcadores
+#####	 29  fenótipos
 
 ```{r}
 summary(population_Z006)
 ```
 
-##  No. individuals:    185 
-
-##  No. phenotypes:     29 
-    Percent phenotyped: 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 100 
-
-##  No. chromosomes:    1 
-##        Autosomes:    0 
-
-##  Total markers:      1106 
-##  No. markers:        1106 
-##  Percent genotyped:  92.1 
-##  Genotypes (%):      AA:48.4  BB:51.6 
-
 ```{r}
 geno.image(population_Z006)
 ```
 
+Agora, calculamos os testes qui-quadrado para ver o quão bem os dados se encaixam na segregação esperada de 1:2:1:
 
 ```{r}
 gt.population_z006 <- geno.table(population_Z006)
 gt.population_z006
 ```
-
-##            chr missing  AA  BB      P.value
-## PZA02255.2       0      10  87  88 9.397430e-01
-## PZA00240.6       0      22  85  78 5.834981e-01
-## PZA01879.1       0      16  80  89 4.887441e-01
-## PZB02155.1       0       9  83  93 4.509823e-01
-## PZA02527.2       0       2  99  84 2.675027e-01
-## PZA03742.1       0      12  91  82 4.938127e-01
-## PZA00521.3       0      12 107  66 1.825948e-03
-## PZB02002.1       0       5  86  94 5.509850e-01
-## PZA02247.1       0      19  82  84 8.766399e-01
-## PZA03529.1       0       9  84  92 5.464936e-01
-## ae1.8.7          0      15  70 100 2.139757e-02
-## PZA03212.3       0      12  93  80 3.229706e-01
-## PZA02941.7       0      18  82  85 8.164239e-01
-## PZA02191.1       0      25  88  72 2.059032e-01
-## PZA03699.1       0      13  65 107 1.362545e-03
-## PZA03728.1       0      11  82  92 4.483923e-01
-## PHM4341.42       0       9  85  91 6.510766e-01
-## PZA01537.2       0      12  87  86 9.393964e-01
-## PZA03227.1       0       2  87  96 5.058592e-01
-## PZA02272.3       0      13  68 104 6.051564e-03
-## PZA02402.1       0      11  80  94 2.885367e-01
-## PZA02454.2       0      11  85  89 7.617076e-01
-## PZA01035.1       0      15  82  88 6.453877e-01
-## PZA02208.1       0      12  74  99 5.733938e-02
-## PZA01044.1       0       9  91  85 6.510766e-01
-## PHM532.23        0      16  71  98 3.780866e-02
-## PZA02418.2       0       3  82 100 1.821223e-01
-## PZA01369.1       0       4  89  92 8.235447e-01
-## PZA00225.8       0      13  82  90 5.418656e-01
-## PZA03634.1       0      14  80  91 4.002409e-01
-## lac1.3           0      13  81  91 4.457659e-01
-## PZA01875.1       0       6  85  94 5.011435e-01
-## PZA02513.1       0      12  62 111 1.950050e-04
-## PZA00616.13      0       8  80  97 2.013206e-01
-## PZA01954.1       0      33  88  64 5.157586e-02
-## PZA03305.7.1     0      17  88  80 5.370940e-01
-## PZA01658.1       0      12  89  84 7.038393e-01
-## PHM4786.9        0      51  64  70 6.042343e-01
-## PZA00760.1       0       7  86  92 6.529131e-01
-## PZA01332.2       0      11  99  75 6.884504e-02
-## PZA03469.1       0      11  83  91 5.441971e-01
-## PZA01623.3       0       6  84  95 4.109753e-01
-## PZA02654.3       0       7  76 102 5.132142e-02
-## PZA00355.2       0       8  86  91 7.070485e-01
-## PZA02792.26.25   0      13  82  90 5.418656e-01
-## PZB00761.1       0      11  81  93 3.629714e-01
-## PHM7922.8        0      12  85  88 8.195796e-01
-## PZA00706.16      0      22  81  82 9.375687e-01
-## PZA00589.10      0      11  83  91 5.441971e-01
-## PZA01278.2       0      13  90  82 5.418656e-01
-## PZA02087.2       0       9  91  85 6.510766e-01
-## sh1.12.11        0       9 101  75 5.001640e-02
-## PZA02252.2       0       6  86  93 6.008319e-01
-## PZA02457.1       0       7  67 111 9.739714e-04
-## PZA03166.1       0      10  82  93 4.056789e-01
-## PZA01726.1       0       6  82  97 2.622229e-01
-## PZA02359.10      0      14  92  79 3.201572e-01
-## PZA02117.1       0       5  78 102 7.363827e-02
-## zb27.1           0      14  81  90 4.912971e-01
-## PZA02113.1       0      10  84  91 5.967012e-01
-## PZA02688.2       0      12  85  88 8.195796e-01
-## PZB00079.4       0      13  91  81 4.457659e-01
-## PZA02128.3       0       7  91  87 7.643200e-01
-## PZA01759.1       0      10  62 113 1.156173e-04
-## PZA01154.1       0      26  76  83 5.788016e-01
-## PZA02291.1       0      13  83  89 6.473148e-01
-## PZA00193.2       0       9 103  73 2.373852e-02
-## PHM904.21        0      13  83  89 6.473148e-01
-## PZA03488.1       0      16  83  86 8.174941e-01
-## PZA00680.3       0       4  75 106 2.121075e-02
-## PHM14055.6       0      10  62 113 1.156173e-04
-## PZA01316.1       0       9  82  94 3.657123e-01
-## PZA03116.1       0      32  70  83 2.932642e-01
-## PZA03037.2       0      14  87  84 8.185458e-01
-## PZA00838.2       0      27  78  80 8.735811e-01
-## PHM13020.10      0      14  83  88 7.021947e-01
-## PHM1968.22       0      11  97  77 1.294698e-01
-## PZA02325.4       0       7  84  94 4.535368e-01
-## PHM3342.31       0      26  76  83 5.788016e-01
-## PZA02011.1       0      10  88  87 9.397430e-01
-## PHM5526.25       0       9  94  82 3.657123e-01
-## PZA01050.1       0      22  71  92 1.000014e-01
-## PZB01235.4       0      12  99  74 5.733938e-02
-## PZA00498.5       0      20  86  79 5.857884e-01
-## PZA03457.1       0       5  96  84 3.710934e-01
-## PZA01367.2       0      12 103  70 1.210928e-02
-## PZA01796.1       0      16  72  97 5.447039e-02
-## PZB01403.1       0      13  86  86 1.000000e+00
-## PZA01348.1       0      26  77  82 6.917172e-01
-## PHM10404.8       0      22  88  75 3.085646e-01
-## PZA03024.16      0      13  69 103 9.528791e-03
-## PZA00323.3       0       8  85  92 5.987824e-01
-## PZA01866.1       0      21  79  85 6.394119e-01
-## PZA01618.2       0      16  80  89 4.887441e-01
-## PZA01995.2       0      12  82  91 4.938127e-01
-## PHM3078.12       0      24  75  86 3.859851e-01
-## PZA00948.1       0       4  76 105 3.111858e-02
-## PZB00765.1       0      13  62 110 2.522490e-04
-## PZA00675.1       0       6  88  91 8.225779e-01
-## PZA02236.1       0      12  87  86 9.393964e-01
-## PZA01563.1       0      33  68  84 1.943659e-01
-## PHM6111.5        0      20  77  88 3.918049e-01
-## PZA02961.6       0      11  83  91 5.441971e-01
-## PZA02393.2       0      14  86  85 9.390437e-01
-## PZA00084.2       0      12  86  87 9.393964e-01
-## PZB01021.1       0      11 100  74 4.871760e-02
-## PZA02577.1       0      17  90  78 3.545395e-01
-## PZA02367.1       0       4 105  76 3.111858e-02
-## PZA02386.2       0      43  72  70 8.667121e-01
-## PHM1870.20       0      18  74  93 1.414902e-01
-## PZA02129.1       0       6  96  83 3.312169e-01
-## PZA02480.1       0       1  74 110 7.955439e-03
-## PZA01280.2       0      11  88  86 8.794870e-01
-## PZA02678.1       0      15  91  79 3.573857e-01
-## PZA03747.1       0      13  65 107 1.362545e-03
-## PZB01662.1       0      10  88  87 9.397430e-01
-## PZA02955.3       0       9  77  99 9.725443e-02
-## PZA00068.1       0      10  98  77 1.124106e-01
-## PZA00436.7       0      10  73 102 2.836551e-02
-## PHM4503.25       0      15  86  84 8.780884e-01
-## PHM1307.11       0      12  60 113 5.589196e-05
-## PZA03275.4.1     0       8  92  85 5.987824e-01
-## PHM18705.23      0      13  85  87 8.787937e-01
-## PZA00508.2       0      32  80  73 5.714506e-01
-## PHM7616.35       0       4  95  86 5.035180e-01
-## glb1.2           0      29  79  77 8.727801e-01
-## PZA01993.7       0       9  92  84 5.464936e-01
-## PZA00455.14.16   0      12  94  79 2.541077e-01
-## PZB00942.1       0      15  83  87 7.590063e-01
-## PZA02289.2       0      11  95  79 2.251463e-01
-## PZA03577.1       0       5  95  85 4.560565e-01
-## PHM816.29        0       6  87  92 7.086145e-01
-## PZA00163.4       0       4  88  93 7.101556e-01
-## PHM4353.31       0      13  83  89 6.473148e-01
-## PZA01691.1       0      11  73 101 3.378114e-02
-## PHM6428.11       0      21  82  82 1.000000e+00
-## PZA02779.1       0      11  99  75 6.884504e-02
-## PHM5484.22       0       9  79  97 1.748444e-01
-## PZA01638.1       0      21  83  81 8.758961e-01
-## PZA01241.2       0      10  86  89 8.205958e-01
-## PHM1959.26       0      13  80  92 3.601961e-01
-## PZA02948.24      0       9  89  87 8.801685e-01
-## PHM3330.25       0      10  86  89 8.205958e-01
-## PZA01238.1.2     0      11  94  80 2.885367e-01
-## PZA03070.9       0      13  86  86 1.000000e+00
-## PZA02390.1       0      51  35  99 3.225060e-08
-## PZA01055.1       0      13  81  91 4.457659e-01
-## PZA02081.1       0      21  67  97 1.914957e-02
-## PZA00175.2       0      23  77  85 5.296507e-01
-## PZA00158.2       0       8  88  89 9.400837e-01
-## PZA03717.1       0      21  69  95 4.233023e-02
-## PHM9418.11       0      24  89  72 1.803144e-01
-## PZA01744.1       0      48  72  65 5.498063e-01
-## PZA01141.1       0       9  84  92 5.464936e-01
-## PZA00243.25      0       8  94  83 4.083444e-01
-## PHM1184.26       0       2  87  96 5.058592e-01
-## PHM2770.19       0      18  82  85 8.164239e-01
-## PHM10225.15      0      11  90  84 6.492108e-01
-## PZA00793.2       0      14  91  80 4.002409e-01
-## PZA02068.1       0      66  22  97 6.188613e-12
-## PZA03677.1       0      22  71  92 1.000014e-01
-## PZA02164.16      0      22  71  92 1.000014e-01
-## PZA01936.4       0      11  86  88 8.794870e-01
-## zb7.2            0      26  84  75 4.753840e-01
-## PZA00425.11      0      33  77  75 8.711315e-01
-## PZA03629.1       0      13  94  78 2.224692e-01
-## PZA00708.3       0       6  88  91 8.225779e-01
-## PHM14104.23      0      25  78  82 7.518296e-01
-## PZA01978.23      0       9  92  84 5.464936e-01
-## PZA00079.1       0      12  83  90 5.945874e-01
-## PZA01901.1       0      10  88  87 9.397430e-01
-## PHM1218.6        0      19  95  71 6.249586e-02
-## PZA03255.1       0      19  80  86 6.414372e-01
-## PZA00106.10      0       6  88  91 8.225779e-01
-## PZA00704.1       0      12  73 100 4.009470e-02
-## PZA03605.1       0      11  83  91 5.441971e-01
-## PZA01962.12      0       7  76 102 5.132142e-02
-## PZA00682.17.2    0      10  90  85 7.054570e-01
-## PZA03182.5       0      17  84  84 1.000000e+00
-## PHM3852.23       0      15  83  87 7.590063e-01
-## PZA00804.1       0       4  82  99 2.063736e-01
-## PZA02514.1       0      10  85  90 7.054570e-01
-## PZA03521.1       0       6  88  91 8.225779e-01
-## PZA01038.1       0       9  84  92 5.464936e-01
-## PZA02668.2       0      11  86  88 8.794870e-01
-## PHM13673.53      0      18  80  87 5.880415e-01
-## bt2.7.4          0      10  60 115 3.215956e-05
-## PZA02890.4       0      28  75  82 5.763932e-01
-## PZA01933.3       0      19  83  83 1.000000e+00
-## PZA02002.1       0      11  66 108 1.452491e-03
-## PZA01195.3       0       9 101  75 5.001640e-02
-## PZA00214.1       0      50  67  68 9.314137e-01
-## PZA01597.1       0      14  84  87 8.185458e-01
-## PZA02274.1       0       5  93  87 6.547208e-01
-## PZA01073.1       0      10  90  85 7.054570e-01
-## PZA02235.14      0      25  75  85 4.291953e-01
-## PZA00222.7       0      14  76  95 1.462331e-01
-## PZA01445.1       0      12  84  89 7.038393e-01
-## PZA01360.3       0      14  84  87 8.185458e-01
-## PZA03155.3       0      15 100  70 2.139757e-02
 
 ```{r}
 table(gt.population_z006$P.value < 0.05)
@@ -269,129 +61,968 @@ table(gt.population_z006$P.value < 0.05)
 table(gt.population_z006$P.value < 0.05/totmar(population_Z006))
 ```
 
-## FALSE  TRUE 
-## 1091    15
+A partir da correção bonferroni dos testes de segregação realizados, notamos que não há segregação distorcida entre os 14 marcadores.
+
+Agora, podemos estimar frações de recombinação usando a função e usar a função para ver os resultados: est.rfplotRF
+
+E, finalmente, estimamos as frações de recombinação em pares:
 
 ```{r}
 population_Z006 <- est.rf(population_Z006)
 plotRF(population_Z006, col.scheme = "redblue")
 ```
 
+Este mapa de calor apresenta tanto o rr estimativas (acima de diagonal) e escores de LOD (abaixo da diagonal).
+
+Uma vez que as frações de recombinação de pairwise tenham sido computadas, podemos tentar ver se esses marcadores estão ligados ou não. Para fazê-lo, assumimos que os marcadores estão ligados se r<0,38r<0,38 e LOD>6LOD>3:
+
 ```{r}
 population_Z006 <- formLinkageGroups(population_Z006, max.rf=0.38, min.lod=6)
 table(population_Z006[,2])
 ```
 
-## 1   2   3   4   5   6    7   8   9   10 
-## 175 139 130 127 111 106  85  78  78  77 
+A partir da função, notamos que apenas 10 grupo é formado, o que significa que todos os 1000 marcadores do conjunto de dados do milho são do mesmo cromossomo.table
 
 
 
-#AULA 5
-##Análise de ligação II: ordenação dos marcadores
+
+
+
+
+
+
+
+
+
+
+# AULA 5
+
+## Análise de ligação II: ordenação dos marcadores
+
+Precisamos carregar o conjunto de dados usando a função:read.cross
+
+```{r}
+population_Z006 <- read.cross(format="csv", file="population_z006.csv", genotypes=c("0","1","2"), crosstype = "riself")
+```
+
+Antes de fazer qualquer pedido, precisamos calcular as frequências de recombinação de dois pontos (usando ):est.rf
 
 ```{r}
 population_Z006 <- est.rf(population_Z006)
 ```
+
+E, com base nas frequências de recombinação de dois pontos, pedimos ao software que procure marcadores no mesmo grupo de linkagem:
 
 ```{r}
 population_Z006 <- formLinkageGroups(population_Z006, max.rf = 0.38, min.lod=6, reorgMarkers=TRUE) 
                                 
 ```
 
+Agora, usamos a função para obter um pedido para os marcadores em cada grupo de linkage (temos apenas um grupo de linkage como identificado em nossa última classe). Primeiro, com:orderMarkersripple = FALSE
+
 ```{r}
 population_Z006 <- orderMarkers(population_Z006, chr = 1, use.ripple = FALSE, map.function="kosambi")
-
+plotRF(population_Z006, col.scheme = "redblue", mark.diagonal = TRUE)
 ```
 
 
 ```{r}
-plotRF(population_Z006, col.scheme = "redblue", mark.diagonal = TRUE) 
-
+population_Z006 <- orderMarkers(population_Z006, chr = 2, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006, col.scheme = "redblue", mark.diagonal = TRUE)
 ```
+
+
+```{r}
+population_Z006 <- orderMarkers(population_Z006, chr = 3, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006, col.scheme = "redblue", mark.diagonal = TRUE)
+```
+
+
+```{r}
+population_Z006 <- orderMarkers(population_Z006, chr = 4, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006, col.scheme = "redblue", mark.diagonal = TRUE)
+```
+
+
+```{r}
+population_Z006 <- orderMarkers(population_Z006, chr = 5, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006, col.scheme = "redblue", mark.diagonal = TRUE)
+```
+
+
+```{r}
+population_Z006 <- orderMarkers(population_Z006, chr = 6, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006, col.scheme = "redblue", mark.diagonal = TRUE)
+```
+
+
+```{r}
+population_Z006 <- orderMarkers(population_Z006, chr = 7, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006, col.scheme = "redblue", mark.diagonal = TRUE)
+```
+
+
+```{r}
+population_Z006 <- orderMarkers(population_Z006, chr = 8, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006, col.scheme = "redblue", mark.diagonal = TRUE)
+```
+
+
+```{r}
+population_Z006 <- orderMarkers(population_Z006, chr = 9, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006, col.scheme = "redblue", mark.diagonal = TRUE)
+```
+
+
+```{r}
+population_Z006 <- orderMarkers(population_Z006, chr = 10, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006, col.scheme = "redblue", mark.diagonal = TRUE)
+```
+
+A partir do mapa de calor, parece ter um marcador extraviado porque algumas das frações de recombinação entre par de marcadores são ainda menores do que aquelas próximas à diagonal.
+
+Vamos primeiro dar uma olhada na ordem atual. Para isso, usamos a função:pull.map
 
 ```{r}
 pull.map(population_Z006, chr=1, as.table = TRUE)
+pull.map(population_Z006, chr=2, as.table = TRUE)
+pull.map(population_Z006, chr=3, as.table = TRUE)
+pull.map(population_Z006, chr=4, as.table = TRUE)
+pull.map(population_Z006, chr=5, as.table = TRUE)
+pull.map(population_Z006, chr=6, as.table = TRUE)
+pull.map(population_Z006, chr=7, as.table = TRUE)
+pull.map(population_Z006, chr=8, as.table = TRUE)
+pull.map(population_Z006, chr=9, as.table = TRUE)
+pull.map(population_Z006, chr=10, as.table = TRUE)
 ```
+
+Note que alguns marcadores parecem um pouco desligados, certo? Para verificar se eles estão em sua posição mais provável ou não, devemos comparar a probabilidade de log ("loglik") da ordem atual com as de ordens alternativas.
+
+Então, primeiro, vamos ver qual é o loglik atual:
+
+Olhar para a probabilidade de log atual ("loglik") é:
 
 ```{r}
 attr(population_Z006$geno$`1`$map, "loglik")
+attr(population_Z006$geno$`2`$map, "loglik")
+attr(population_Z006$geno$`3`$map, "loglik")
+attr(population_Z006$geno$`4`$map, "loglik")
+attr(population_Z006$geno$`5`$map, "loglik")
+attr(population_Z006$geno$`6`$map, "loglik")
+attr(population_Z006$geno$`7`$map, "loglik")
+attr(population_Z006$geno$`8`$map, "loglik")
+attr(population_Z006$geno$`9`$map, "loglik")
+attr(population_Z006$geno$`10`$map, "loglik")
 ```
 
-## [1] -2938.3
+Agora, vamos tentar algumas ordens alternativas. Primeiro, podemos usar para procurar inversões locais (o que parece ser o caso, por sinal):ripple = TRUE
+
+```{r}
+memory.limit(9999999999)
+```
 
 ```{r}
 population_Z006 <- orderMarkers(population_Z006, chr=1, use.ripple = TRUE, map.function="kosambi")
-```
-
-
-```{r}
 plotRF(population_Z006, mark.diagonal = TRUE, col.scheme = "redblue")
 ```
 
+```{r}
+population_Z006 <- orderMarkers(population_Z006, chr=2, use.ripple = TRUE, map.function="kosambi")
+plotRF(population_Z006, mark.diagonal = TRUE, col.scheme = "redblue")
+```
+
+```{r}
+population_Z006 <- orderMarkers(population_Z006, chr=3, use.ripple = TRUE, map.function="kosambi")
+plotRF(population_Z006, mark.diagonal = TRUE, col.scheme = "redblue")
+```
+
+```{r}
+population_Z006 <- orderMarkers(population_Z006, chr=4, use.ripple = TRUE, map.function="kosambi")
+plotRF(population_Z006, mark.diagonal = TRUE, col.scheme = "redblue")
+```
+
+```{r}
+population_Z006 <- orderMarkers(population_Z006, chr=5, use.ripple = TRUE, map.function="kosambi")
+plotRF(population_Z006, mark.diagonal = TRUE, col.scheme = "redblue")
+```
+
+```{r}
+population_Z006 <- orderMarkers(population_Z006, chr=6, use.ripple = TRUE, map.function="kosambi")
+plotRF(population_Z006, mark.diagonal = TRUE, col.scheme = "redblue")
+```
+
+```{r}
+population_Z006 <- orderMarkers(population_Z006, chr=7, use.ripple = TRUE, map.function="kosambi")
+plotRF(population_Z006, mark.diagonal = TRUE, col.scheme = "redblue")
+```
+
+```{r}
+population_Z006 <- orderMarkers(population_Z006, chr=8, use.ripple = TRUE, map.function="kosambi")
+plotRF(population_Z006, mark.diagonal = TRUE, col.scheme = "redblue")
+```
+
+```{r}
+population_Z006 <- orderMarkers(population_Z006, chr=9, use.ripple = TRUE, map.function="kosambi")
+plotRF(population_Z006, mark.diagonal = TRUE, col.scheme = "redblue")
+```
+
+```{r}
+population_Z006 <- orderMarkers(population_Z006, chr=10, use.ripple = TRUE, map.function="kosambi")
+plotRF(population_Z006, mark.diagonal = TRUE, col.scheme = "redblue")
+```
+
+Novamente, parece ter um marcador extraviado porque algumas das frações de recombinação entre par de marcadores são ainda menores do que aquelas próximas à diagonal.
+
+Vamos primeiro dar uma olhada na ordem atual. Para isso, usamos a função:pull.map
 
 ```{r}
 pull.map(population_Z006, chr=1, as.table = TRUE)
+pull.map(population_Z006, chr=2, as.table = TRUE)
+pull.map(population_Z006, chr=3, as.table = TRUE)
+pull.map(population_Z006, chr=4, as.table = TRUE)
+pull.map(population_Z006, chr=5, as.table = TRUE)
+pull.map(population_Z006, chr=6, as.table = TRUE)
+pull.map(population_Z006, chr=7, as.table = TRUE)
+pull.map(population_Z006, chr=8, as.table = TRUE)
+pull.map(population_Z006, chr=9, as.table = TRUE)
+pull.map(population_Z006, chr=10, as.table = TRUE)
 ```
 
 
 ```{r}
 attr(population_Z006$geno$`1`$map, "loglik")
+attr(population_Z006$geno$`2`$map, "loglik")
+attr(population_Z006$geno$`3`$map, "loglik")
+attr(population_Z006$geno$`4`$map, "loglik")
+attr(population_Z006$geno$`5`$map, "loglik")
+attr(population_Z006$geno$`6`$map, "loglik")
+attr(population_Z006$geno$`7`$map, "loglik")
+attr(population_Z006$geno$`8`$map, "loglik")
+attr(population_Z006$geno$`9`$map, "loglik")
+attr(population_Z006$geno$`10`$map, "loglik")
 ```
 
-## [1] -2938.3
+
+Legal! O grupo de ligação é menor e a probabilidade é maior do que a ordem anterior.
+
+Finalmente, uma maneira de desenhar o mapa de linkage é usando a função:plotMap
 
 ```{r}
 population_Z006 <- flip.order(population_Z006, chr = 1)
-pull.map(population_Z006, chr = 1, as.table = TRUE)
-```
-
-```{r}
 plotMap(population_Z006, show.marker.names=TRUE)
 ```
+
+
+```{r}
+population_Z006 <- flip.order(population_Z006, chr = 2)
+plotMap(population_Z006, show.marker.names=TRUE)
+```
+
+
+```{r}
+population_Z006 <- flip.order(population_Z006, chr = 3)
+plotMap(population_Z006, show.marker.names=TRUE)
+```
+
+
+```{r}
+population_Z006 <- flip.order(population_Z006, chr = 4)
+plotMap(population_Z006, show.marker.names=TRUE)
+```
+
+
+```{r}
+population_Z006 <- flip.order(population_Z006, chr = 5)
+plotMap(population_Z006, show.marker.names=TRUE)
+```
+
+
+```{r}
+population_Z006 <- flip.order(population_Z006, chr = 6)
+plotMap(population_Z006, show.marker.names=TRUE)
+```
+
+
+```{r}
+population_Z006 <- flip.order(population_Z006, chr = 7)
+plotMap(population_Z006, show.marker.names=TRUE)
+```
+
+
+```{r}
+population_Z006 <- flip.order(population_Z006, chr = 8)
+plotMap(population_Z006, show.marker.names=TRUE)
+```
+
+
+```{r}
+population_Z006 <- flip.order(population_Z006, chr = 9)
+plotMap(population_Z006, show.marker.names=TRUE)
+```
+
+
+```{r}
+population_Z006 <- flip.order(population_Z006, chr = 10)
+plotMap(population_Z006, show.marker.names=TRUE)
+
+```
+
+Se quisermos ver onde os crossovers foram parar para os primeiros 10 indivíduos ao longo do mapa de linkage, então usamos a função:plotGeno
 
 ```{r}
 plotGeno(population_Z006, chr = 1 , ind = 1:10)
 ```
 
-#AULA 6
-##Análise de QTL I: análise de marcas individuais
-
 
 ```{r}
-Map <- est.map(population_Z006, error.prob=0, map.function = "kosambi")
-population_Z006 <- replace.map(population_Z006, Map)
+plotGeno(population_Z006, chr = 2 , ind = 1:10)
 ```
 
 
-#AULA 6
-##Ordenando marcadores usando pacotes R/qtl e MDSmap+MAPpoly
-
 ```{r}
-install.packages("mappoly")
-
-library(mappoly)
+plotGeno(population_Z006, chr = 3 , ind = 1:10)
 ```
 
+
 ```{r}
-getMDSorder <- function(cross, chr)
-logLik.mds <- c()
-  
+plotGeno(population_Z006, chr = 4 , ind = 1:10)
 ```
 
+
 ```{r}
-c <- 1
-mds.or
+plotGeno(population_Z006, chr = 5 , ind = 1:10)
 ```
 
-#AULA 8
-##QTL mapping II: interval mapping (IM)
 
 ```{r}
-population_Z006 <- read.csv("population_Z006")
+plotGeno(population_Z006, chr = 6 , ind = 1:10)
+```
+
+
+```{r}
+plotGeno(population_Z006, chr = 7 , ind = 1:10)
+```
+
+
+```{r}
+plotGeno(population_Z006, chr = 8 , ind = 1:10)
+```
+
+
+```{r}
+plotGeno(population_Z006, chr = 9 , ind = 1:10)
+```
+
+
+```{r}
+plotGeno(population_Z006, chr = 10 , ind = 1:10)
+```
+O azul × indicam que um crossover aconteceu nesse intervalo
+
+
+
+
+
+
+
+
+
+
+# AULA 6
+
+## Modelo de regressão linear
+
+## Análise de marcador único usando base R
+
+```{r}
+library(readr)
+population_Z006 <- read_csv("population_Z006.csv")
 head(population_Z006)
 ```
 
 ```{r}
+population_Z006 <- population_Z006[-c(1),]
+head(population_Z006)
+```
+
+
+## Modelo de regressão linear
+
+```{r}
+summary(lm(PlantHeight ~ PlantHeight, data = population_Z006))
+```
+
+
+```{r}
+plot(PlantHeight ~ jitter(PlantHeight, .5), xlab = "PlantHeight", xaxt = "n", data = population_Z006)
+axis(1, at = c(0, 1, 2), labels = c("0\n(mm)", "1\n(Mm)", "2\n(MM)"), tcl = 0.5)
+abline(lm(PlantHeight ~ PlantHeight, data = population_Z006))
+```
+
+```{r}
+population_Z006.a <- population_Z006[,2:13]-1
+head(population_Z006.a)
+```
+
+```{r}
+summary(lm(population_Z006[,"PlantHeight"] ~ population_Z006.a[,1]))
+```
+
+
+
+
+
+
+
+
+# AULA 7
+
+## Ordenando marcadores usando pacotes R/qtl e MDSmap+MAPpoly
+
+# Construção do mapa de ligação
+
+```{r}
+population_Z006 <- read.cross(format="csv", file="population_z006.csv", genotypes=c("0","1","2"), crosstype = "riself")
+```
+
+```{r}
+population_Z006 <- est.rf(cross = population_Z006)
+plotRF(population_Z006, col.scheme = "redblue")
+```
+
+# Agrupamento de marcadores
+
+```{r}
+max.rf <- 0.38
+kosambi <- function(r) (1/4)*log((1+(2*r))/(1-(2*r)))
+kosambi(r = max.rf)
+```
+
+```{r}
+(M <- totmar(population_Z006))
+```
+
+```{r}
+(num.pair <- choose(M, 2))
+```
+
+```{r}
+(min.lrt <- qchisq(1-(0.05/num.pair), 1))
+```
+
+```{r}
+(min.lod <- 0.2172 * min.lrt)
+```
+
+```{r}
+lg <- formLinkageGroups(population_Z006, max.rf=max.rf, min.lod=min.lod, reorgMarkers=FALSE)
+table(lg[,2])
+```
+
+```{r}
+population_Z006 <- formLinkageGroups(population_Z006, max.rf=0.38, min.lod=6.25, reorgMarkers=TRUE)
+plotRF(population_Z006, col.scheme = "redblue")
+```
+O mapa de calor mostra marcadores agrupados, mas ainda não ordenados, dentro de cada grupo de ligação.
+
+
+# Pedido de marcador
+
+## Usando orderMarkersa função por R/qtl
+
+```{r}
+population_Z006.bb1 <- population_Z006
+```
+
+
+```{r}
+population_Z006.bb2 <- population_Z006
+```
+
+
+```{r}
+loglik.bb1 <- loglik.bb2 <- c()
+```
+
+# Grupo de ligação 1
+
+```{r}
+c <- 1
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+c <- 2
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+c <- 3
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+c <- 4
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+c <- 5
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+c <- 6
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+c <- 7
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+c <- 8
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+c <- 9
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+c <- 10
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+population_Z006.bb1 <- orderMarkers(cross = population_Z006.bb1, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb1, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb1, chr = c)
+```
+
+```{r}
+(loglik.bb1[c] <- attr(population_Z006.bb1$geno[[c]]$map, "loglik"))
 
 ```
+
+```{r}
+population_Z006.bb2 <- orderMarkers(cross = population_Z006.bb2, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb2, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb2, chr = c)
+```
+
+```{r}
+(loglik.bb2[c] <- attr(population_Z006.bb2$geno[[c]]$map, "loglik"))
+```
+
+# Grupo de ligação 1
+
+```{r}
+c <- 1
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+population_Z006.bb1 <- orderMarkers(cross = population_Z006.bb1, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb1, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb1, chr = c)
+```
+
+```{r}
+(loglik.bb1[c] <- attr(population_Z006.bb1$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+population_Z006.bb2 <- orderMarkers(cross = population_Z006.bb2, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb2, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb2, chr = c)
+```
+
+```{r}
+(loglik.bb2[c] <- attr(population_Z006.bb2$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+save.image("population_Z006.RData")
+```
+
+
+# Grupo de ligação 2
+
+```{r}
+c <- 2
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+population_Z006.bb1 <- orderMarkers(cross = population_Z006.bb1, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb1, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb1, chr = c)
+```
+
+```{r}
+(loglik.bb1[c] <- attr(population_Z006.bb1$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+population_Z006.bb2 <- orderMarkers(cross = population_Z006.bb2, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb2, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb2, chr = c)
+```
+
+```{r}
+(loglik.bb2[c] <- attr(population_Z006.bb2$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+save.image("population_Z006.RData")
+```
+
+# Grupo de ligação 3
+
+```{r}
+c <- 3
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+population_Z006.bb1 <- orderMarkers(cross = population_Z006.bb1, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb1, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb1, chr = c)
+```
+
+```{r}
+(loglik.bb1[c] <- attr(population_Z006.bb1$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+population_Z006.bb2 <- orderMarkers(cross = population_Z006.bb2, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb2, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb2, chr = c)
+```
+
+```{r}
+(loglik.bb2[c] <- attr(population_Z006.bb2$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+save.image("population_Z006.RData")
+```
+
+# Grupo de ligação 4
+
+```{r}
+c <- 4
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+population_Z006.bb1 <- orderMarkers(cross = population_Z006.bb1, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb1, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb1, chr = c)
+```
+
+```{r}
+(loglik.bb1[c] <- attr(population_Z006.bb1$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+population_Z006.bb2 <- orderMarkers(cross = population_Z006.bb2, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb2, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb2, chr = c)
+```
+
+```{r}
+(loglik.bb2[c] <- attr(population_Z006.bb2$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+save.image("population_Z006.RData")
+```
+
+# Grupo de ligação 5
+
+```{r}
+c <- 5
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+population_Z006.bb1 <- orderMarkers(cross = population_Z006.bb1, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb1, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb1, chr = c)
+```
+
+```{r}
+(loglik.bb1[c] <- attr(population_Z006.bb1$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+population_Z006.bb2 <- orderMarkers(cross = population_Z006.bb2, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb2, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb2, chr = c)
+```
+
+```{r}
+(loglik.bb2[c] <- attr(population_Z006.bb2$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+save.image("population_Z006.RData")
+```
+
+
+# Grupo de ligação 6
+
+
+```{r}
+c <- 6
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+population_Z006.bb1 <- orderMarkers(cross = population_Z006.bb1, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb1, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb1, chr = c)
+```
+
+```{r}
+(loglik.bb1[c] <- attr(population_Z006.bb1$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+population_Z006.bb2 <- orderMarkers(cross = population_Z006.bb2, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb2, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb2, chr = c)
+```
+
+```{r}
+(loglik.bb2[c] <- attr(population_Z006.bb2$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+save.image("population_Z006.RData")
+```
+
+
+# Grupo de ligação 7
+
+```{r}
+c <- 7
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+population_Z006.bb1 <- orderMarkers(cross = population_Z006.bb1, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb1, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb1, chr = c)
+```
+
+```{r}
+(loglik.bb1[c] <- attr(population_Z006.bb1$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+population_Z006.bb2 <- orderMarkers(cross = population_Z006.bb2, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb2, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb2, chr = c)
+```
+
+```{r}
+(loglik.bb2[c] <- attr(population_Z006.bb2$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+save.image("population_Z006.RData")
+```
+
+
+# Grupo de ligação 8
+
+```{r}
+c <- 8
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+population_Z006.bb1 <- orderMarkers(cross = population_Z006.bb1, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb1, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb1, chr = c)
+```
+
+```{r}
+(loglik.bb1[c] <- attr(population_Z006.bb1$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+population_Z006.bb2 <- orderMarkers(cross = population_Z006.bb2, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb2, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb2, chr = c)
+```
+
+```{r}
+(loglik.bb2[c] <- attr(population_Z006.bb2$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+save.image("population_Z006.RData")
+```
+
+# Grupo de ligação 9
+
+```{r}
+c <- 9
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+population_Z006.bb1 <- orderMarkers(cross = population_Z006.bb1, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb1, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb1, chr = c)
+```
+
+```{r}
+(loglik.bb1[c] <- attr(population_Z006.bb1$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+population_Z006.bb2 <- orderMarkers(cross = population_Z006.bb2, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb2, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb2, chr = c)
+```
+
+```{r}
+(loglik.bb2[c] <- attr(population_Z006.bb2$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+save.image("population_Z006.RData")
+```
+
+
+# Grupo de ligação 10
+
+
+```{r}
+c <- 10
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+population_Z006.bb1 <- orderMarkers(cross = population_Z006.bb1, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb1, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb1, chr = c)
+```
+
+```{r}
+(loglik.bb1[c] <- attr(population_Z006.bb1$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+population_Z006.bb2 <- orderMarkers(cross = population_Z006.bb2, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb2, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb2, chr = c)
+```
+
+```{r}
+(loglik.bb2[c] <- attr(population_Z006.bb2$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+save.image("population_Z006.RData")
+```
+
+
+# Ajustes manuais da orderMarkers()saída
+
+```{r}
+knitr::kable(cbind(summaryMap(population_Z006.bb1), log.likelihood=c(loglik.bb1, sum(loglik.bb1))))
+```
+
+```{r}
+plotMap(population_Z006.bb1)
+save.image("population_Z006.RData")
+```
+
+```{r}
+plotRF(population_Z006.bb1, col.scheme = "redblue")
+save.image("population_Z006.RData")
+```
+
+```{r}
+knitr::kable(cbind(summaryMap(population_Z006.bb2), log.likelihood=c(loglik.bb2, sum(loglik.bb2))))
+```
+
+```{r}
+plotMap(population_Z006.bb2)
+save.image("population_Z006.RData")
+```
+
