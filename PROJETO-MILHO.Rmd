@@ -1,0 +1,1395 @@
+---
+title: "Análise de ligação e de QTL de uma população de linhagens endogâmicas recombinantes (RIL) originada de uma nested-association mapping (NAM) de milho"
+author:  Helio de Souza Junior ^[Federal Universidade Federal de Viçosa, helio.d.junior@ufv.br]
+date: '2022-06-14'
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+Este projeto foi proposto na disciplina FIT 678 - Análise de dados genéticos no melhoramento de plantas da UFV, ministrada pelo Prof. Guilherme da Silva Pereira. 
+
+
+O propósito desse projeto foi realizar análises de ligação e de QTL em um conjunto de dados reais. O objetivo é realizar uma Análise de ligação I: segregação de marcadores, cálculo da fração de recombinação dois-pontos, e formação dos grupos de ligação; Análise de ligação II: ordenação dos marcadores; Análise de QTL I: análise de marcas individuais; Análise de QTL II: mapeamento por intervalo;  Análise de QTL III: mapeamento por intervalo composto e Análise de QTL IV: mapeamento por múltiplos intervalos.
+
+
+## DADOS DO MILHO 
+Trata de uma população  RIL com 1106 marcadores em 185 indivíduos e foram avaliados 29 fenótipos que consistem na característica da altura da planta.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE, cache.lazy = FALSE, warning = FALSE)
+```
+
+```{r}
+library(qtl)
+```
+
+```{r}
+population_Z006 <- read.cross(format="csv", file="population_z006.csv", genotypes=c("0","1","2"), crosstype = "riself")
+```
+
+```{r}
+summary(population_Z006)
+```
+
+```{r}
+geno.image(population_Z006)
+```
+
+```{r}
+gt.population_z006 <- geno.table(population_Z006)
+gt.population_z006
+```
+
+```{r}
+table(gt.population_z006$P.value < 0.05)
+```
+
+```{r}
+table(gt.population_z006$P.value < 0.05/totmar(population_Z006))
+```
+
+# Construção do mapa de ligação
+## Carregar dados e estimar frações de recombinação em pares
+Para começar com a análise, carregamos os dados (aqui, estamos usando a população de linha de raça recombinante Z006) usando a função , e estimamos as frações de recombinação de pairwise (e seus respectivos escores lod) usando a função :read.cross()est.rf()
+
+```{r}
+population_Z006 <- read.cross(format="csv", file="population_z006.csv", genotypes=c("0","1","2"), crosstype = "riself")
+```
+
+Observe que existem alguns avisos sobre:
+
+1: A exclusão das heterozigotes remanescentes em uma população RIL (code==2 é a mesma do genótipo=1); 2: O fato de que o mapa ainda não é estimado, então o pacote interpreta cada marcador de 10 cM de distância (o que é claramente errado e vamos corrigi-lo).qtl
+
+```{r}
+population_Z006 <- est.rf(cross = population_Z006)
+plotRF(population_Z006, col.scheme = "redblue")
+```
+A partir da função, notamos que 1106 marcadores ainda não foram atribuídos a grupos de vinculação. Na prática, recomenda-se verificar a falta de dados de marcadores e distorção de segregação antes do agrupamento, mas vamos ignorá-los por uma questão de tempo aqui.plotRF()
+
+
+# Agrupamento de marcadores
+
+Uma vez que tenhamos as estimativas de fração de recombinação de pairwise, podemos tentar ver quais marcadores estão no mesmo grupo de ligação. Para isso, precisamos fornecer a fração máxima de recombinação (argumento) e pontuação mínima de LOD (argumento). Esses valores são fornecidos à função e são usados para ver se dois marcadores estão ligados ou não, evitando falsos positivos. Vamos mostrar de onde esses valores vêm, mas você pode usá-los diretamente em sua análise.max.rfmin.lodformLinkageGroups()
+
+Para , podemos usar algo em torno de 0,38, que é a fração de recombinação máxima de valor de 0,50 quando convertido via função de mapa Kosambi:max.rf
+
+Uma fração de recombinação tão grande quanto 0,50 significa que dois marcadores estão segregando independentemente (ou seja, esses dois marcadores não estão ligados). Veja abaixo:
+
+```{r}
+max.rf <- 0.38
+kosambi <- function(r) (1/4)*log((1+(2*r))/(1-(2*r)))
+kosambi(r = max.rf)
+```
+
+Pois, podemos executar a correção bonferroni no número de testes que temos que realizar para avaliar a vinculação do marcador. O número de testes é o número de pares de marcadores que temos em nossos dados. Como primeiro palpite, temos:min.lod
+
+```{r}
+(M <- totmar(population_Z006))
+```
+
+```{r}
+(num.pair <- choose(M, 2))
+```
+
+```{r}
+(min.lrt <- qchisq(1-(0.05/num.pair), 1))
+```
+
+```{r}
+(min.lod <- 0.2172 * min.lrt)
+```
+
+Agora, é hora de ver quantos grupos de ligação temos. Primeiro, executamos a função apenas para ver como os marcadores são distribuídos ao longo dos grupos de linkagem formados:formLinkageGroups()reorgMarkers = FALSE
+
+
+```{r}
+lg <- formLinkageGroups(population_Z006, max.rf=max.rf, min.lod=min.lod, reorgMarkers=FALSE)
+table(lg[,2])
+```
+
+```{r}
+population_Z006 <- formLinkageGroups(population_Z006, max.rf=0.38, min.lod=6.25, reorgMarkers=TRUE)
+plotRF(population_Z006, col.scheme = "redblue")
+```
+
+O mapa de calor mostra marcadores agrupados, mas ainda não ordenados dentro de cada grupo de ligação.
+
+
+# Ordenação de marcadores
+
+Vamos mostrar duas maneiras de ordenar marcadores. A primeira maneira usa a função por R/qtl e geralmente precisa de alguma curadoria manual. A segunda maneira usa o algoritmo MDS e é mais rápido e geralmente mais preciso. Você pode escolher qual método deseja usar e pular para sua seção específica, o que significa que você não precisa executar para os dois lados.orderMarkers()
+
+## Usando orderMarkers a função por R/qtl
+
+R/qtl tem uma função que executa o algoritmo Branch-and-Bound como uma possível solução para o Problema do Vendedor de Viagens (TSP) que é o marcador de pedidos. Geralmente fornece uma boa solução. O problema é que Branch-and-Bound é muito sensível à escolha do marcador que é feita para iniciar o algoritmo. Portanto, executamos pelo menos algumas vezes para que algum efeito das primeiras escolhas possa ser avaliado.
+
+Nós salvamos o objeto sob dois novos objetos chamados e, assim, podemos atualizar com os resultados de duas corridas do algoritmo Branch-and-Bound. Além disso, inicializamos dois objetos que armazenarão a probabilidade de registro do pedido para cada grupo de linkage de ambas as corridas:population_Z006.bb1, population_Z006.bb2
+
+```{r}
+population_Z006.bb1 <- population_Z006
+
+population_Z006.bb2 <- population_Z006
+
+loglik.bb1 <- loglik.bb2 <- c()
+```
+
+
+```{r}
+c <- 1
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+
+c <- 2
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+
+c <- 3
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+
+c <- 4
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+
+c <- 5
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+
+c <- 6
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+
+c <- 7
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+
+c <- 8
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+
+c <- 9
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+
+c <- 10
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+memory.limit(9999999999)
+```
+
+## Grupo de ligação 1
+O objeto armazena o número do cromossomo em avaliação.c
+
+
+```{r}
+c <- 1
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+```
+O argumento vamos dar uma olhada mais de perto no mapa de calor de um cromossomo específico, cujos marcadores claramente não são ordenados.chr
+
+```{r}
+population_Z006.bb1 <- orderMarkers(cross = population_Z006.bb1, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb1, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb1, chr = c)
+```
+
+```{r}
+(loglik.bb1[c] <- attr(population_Z006.bb1$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+population_Z006.bb2 <- orderMarkers(cross = population_Z006.bb2, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb2, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb2, chr = c)
+```
+
+```{r}
+(loglik.bb2[c] <- attr(population_Z006.bb2$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+save.image("population_Z006.RData")
+```
+
+## Grupo de ligação 2
+
+```{r}
+c <- 2
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+population_Z006.bb1 <- orderMarkers(cross = population_Z006.bb1, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb1, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb1, chr = c)
+```
+
+```{r}
+(loglik.bb1[c] <- attr(population_Z006.bb1$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+population_Z006.bb2 <- orderMarkers(cross = population_Z006.bb2, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb2, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb2, chr = c)
+```
+
+```{r}
+(loglik.bb2[c] <- attr(population_Z006.bb2$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+save.image("population_Z006.RData")
+```
+
+## Grupo de ligação 3
+
+```{r}
+c <- 3
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+population_Z006.bb1 <- orderMarkers(cross = population_Z006.bb1, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb1, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb1, chr = c)
+```
+
+```{r}
+(loglik.bb1[c] <- attr(population_Z006.bb1$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+population_Z006.bb2 <- orderMarkers(cross = population_Z006.bb2, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb2, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb2, chr = c)
+```
+
+```{r}
+(loglik.bb2[c] <- attr(population_Z006.bb2$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+save.image("population_Z006.RData")
+```
+
+## Grupo de ligação 4
+
+```{r}
+c <- 4
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+population_Z006.bb1 <- orderMarkers(cross = population_Z006.bb1, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb1, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb1, chr = c)
+```
+
+```{r}
+(loglik.bb1[c] <- attr(population_Z006.bb1$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+population_Z006.bb2 <- orderMarkers(cross = population_Z006.bb2, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb2, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb2, chr = c)
+```
+
+```{r}
+(loglik.bb2[c] <- attr(population_Z006.bb2$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+save.image("population_Z006.RData")
+```
+
+## Grupo de ligação 5
+
+```{r}
+c <- 5
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+population_Z006.bb1 <- orderMarkers(cross = population_Z006.bb1, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb1, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb1, chr = c)
+```
+
+```{r}
+(loglik.bb1[c] <- attr(population_Z006.bb1$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+population_Z006.bb2 <- orderMarkers(cross = population_Z006.bb2, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb2, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb2, chr = c)
+```
+
+```{r}
+(loglik.bb2[c] <- attr(population_Z006.bb2$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+save.image("population_Z006.RData")
+```
+
+## Grupo de ligação 6
+
+```{r}
+c <- 6
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+population_Z006.bb1 <- orderMarkers(cross = population_Z006.bb1, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb1, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb1, chr = c)
+```
+
+```{r}
+(loglik.bb1[c] <- attr(population_Z006.bb1$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+population_Z006.bb2 <- orderMarkers(cross = population_Z006.bb2, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb2, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb2, chr = c)
+```
+
+```{r}
+(loglik.bb2[c] <- attr(population_Z006.bb2$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+save.image("population_Z006.RData")
+```
+
+## Grupo de ligação 7
+
+```{r}
+c <- 7
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+population_Z006.bb1 <- orderMarkers(cross = population_Z006.bb1, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb1, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb1, chr = c)
+```
+
+```{r}
+(loglik.bb1[c] <- attr(population_Z006.bb1$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+population_Z006.bb2 <- orderMarkers(cross = population_Z006.bb2, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb2, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb2, chr = c)
+```
+
+```{r}
+(loglik.bb2[c] <- attr(population_Z006.bb2$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+save.image("population_Z006.RData")
+```
+
+## Grupo de ligação 8
+
+```{r}
+c <- 8
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+population_Z006.bb1 <- orderMarkers(cross = population_Z006.bb1, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb1, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb1, chr = c)
+```
+
+```{r}
+(loglik.bb1[c] <- attr(population_Z006.bb1$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+population_Z006.bb2 <- orderMarkers(cross = population_Z006.bb2, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb2, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb2, chr = c)
+```
+
+```{r}
+(loglik.bb2[c] <- attr(population_Z006.bb2$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+save.image("population_Z006.RData")
+```
+
+## Grupo de ligação 9
+
+```{r}
+c <- 9
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+population_Z006.bb1 <- orderMarkers(cross = population_Z006.bb1, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb1, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb1, chr = c)
+```
+
+```{r}
+(loglik.bb1[c] <- attr(population_Z006.bb1$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+population_Z006.bb2 <- orderMarkers(cross = population_Z006.bb2, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb2, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb2, chr = c)
+```
+
+```{r}
+(loglik.bb2[c] <- attr(population_Z006.bb2$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+save.image("population_Z006.RData")
+```
+
+## Grupo de ligação 10
+
+```{r}
+c <- 10
+plotRF(population_Z006, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+population_Z006.bb1 <- orderMarkers(cross = population_Z006.bb1, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb1, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb1, chr = c)
+```
+
+```{r}
+(loglik.bb1[c] <- attr(population_Z006.bb1$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+population_Z006.bb2 <- orderMarkers(cross = population_Z006.bb2, chr=c, use.ripple = FALSE, map.function="kosambi")
+plotRF(population_Z006.bb2, chr = c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.bb2, chr = c)
+```
+
+```{r}
+(loglik.bb2[c] <- attr(population_Z006.bb2$geno[[c]]$map, "loglik"))
+```
+
+```{r}
+save.image("population_Z006.RData")
+```
+
+# Ajustes manuais da saída orderMarkers()
+
+Antes de quaisquer ajustes manuais nos pedidos de marcadores, precisamos verificar quais corridas de desempenho melhor para cada grupo de linkage. Para isso, devemos olhar para os comprimentos do grupo de ligação, espaço máximo entre dois marcadores consecutivos (também conhecido como lacuna) e suas probabilidades de log. Maiores probabilidades de log indicam mapas melhores (ou seja, mais prováveis).orderMarkers()
+
+Combinamos as informações da função com a recolhida nos objetos e de cada execução:summaryMap()loglik.bb1loglik.bb1
+
+```{r}
+knitr::kable(cbind(summaryMap(population_Z006.bb1), log.likelihood=c(loglik.bb1, sum(loglik.bb1))))
+```
+
+```{r}
+plotMap(population_Z006.bb1)
+save.image("population_Z006.RData")
+```
+
+```{r}
+plotRF(population_Z006.bb1, col.scheme = "redblue")
+save.image("population_Z006.RData")
+```
+
+```{r}
+knitr::kable(cbind(summaryMap(population_Z006.bb2), log.likelihood=c(loglik.bb2, sum(loglik.bb2))))
+```
+
+```{r}
+plotMap(population_Z006.bb2)
+save.image("population_Z006.RData")
+```
+
+```{r}
+plotRF(population_Z006.bb2, col.scheme = "redblue")
+save.image("population_Z006.RData")
+```
+
+```{r}
+save.image("population_Z006_bb.RData")
+```
+
+Agora, podemos selecionar a melhor ordem até agora, que ainda podemos tentar melhorar fazendo ajustes manuais para cada grupo de linkage. Como estratégia para melhorar o pedido de marcadores, vamos encontrar onde estão as principais lacunas, e corrigi-lo movendo o bloco de marcadores para sua posição mais provável quando olhar para o mapa de calor.
+
+E podemos continuar fazendo isso por cada grupo de ligação. No entanto, outra alternativa oferece melhor encomenda em geral de forma muito mais eficiente.
+
+# Escala Multidimensional (MDS) por MDSMap + MAPpoly
+
+E podemos continuar fazendo isso por cada grupo de ligação. No entanto, outra alternativa oferece melhor encomenda em geral de forma muito mais eficiente.
+
+```{r}
+library(mappoly)
+```
+
+```{r}
+getMDSorder <- function(cross, chr){
+  markers <- match(names(cross$geno[[chr]]$map), colnames(cross$rf))
+  mat <- cross$rf[markers,markers]
+  rec.mat <- lod.mat <- matrix(rep(NA, length(markers)^2), nrow = length(markers))
+  colnames(rec.mat) <- colnames(lod.mat) <- rownames(rec.mat) <- rownames(lod.mat) <- colnames(mat)
+  lod.mat[upper.tri(lod.mat)] <- mat[upper.tri(mat)]
+  lod.mat[lower.tri(lod.mat)] <- t(lod.mat)[lower.tri(lod.mat)]
+  rec.mat[lower.tri(rec.mat)] <- mat[lower.tri(mat)]
+  rec.mat[upper.tri(rec.mat)] <- t(rec.mat)[upper.tri(rec.mat)]
+  input.mat <- NULL
+  input.mat$rec.mat <- rec.mat
+  input.mat$lod.mat <- lod.mat
+  mds.map <- mappoly::mds_mappoly(input.mat)
+  mds.ord <- match(as.character(mds.map$locimap$locus), colnames(mat))
+  return(mds.ord)
+}
+```
+
+Criaremos um novo objeto chamado que é uma cópia do nosso objeto cruzado original, para que possamos atualizar o pedido apenas dentro. Além disso, criaremos um objeto vazio chamado para armazenar a probabilidade de registro dos pedidos obtidos usando MDS:population_Z006.mds, loglik.mds
+
+## Grupo de ligação 1
+
+```{r}
+population_Z006.mds <- population_Z006
+loglik.mds <- c()
+```
+
+```{r}
+c <- 1
+mds.ord <- getMDSorder(cross = population_Z006.mds, chr = c)
+```
+
+```{r}
+population_Z006.mds <- switch.order(cross = population_Z006.mds, chr=c, order=mds.ord, maxit = 10000, tol=1e-5)
+plotRF(population_Z006.mds, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.mds, chr = c)
+```
+
+```{r}
+(loglik.mds[c] <- attr(population_Z006.mds$geno[[c]]$map, "loglik"))
+```
+
+## Grupo de ligação 2
+
+```{r}
+c <- 2
+mds.ord <- getMDSorder(cross = population_Z006.mds, chr = c)
+```
+
+```{r}
+population_Z006.mds <- switch.order(cross = population_Z006.mds, chr=c, order=mds.ord, maxit = 10000, tol=1e-5)
+plotRF(population_Z006.mds, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.mds, chr = c)
+```
+
+```{r}
+(loglik.mds[c] <- attr(population_Z006.mds$geno[[c]]$map, "loglik"))
+```
+
+## Grupo de ligação 3
+
+```{r}
+c <- 3
+mds.ord <- getMDSorder(cross = population_Z006.mds, chr = c)
+```
+
+```{r}
+population_Z006.mds <- switch.order(cross = population_Z006.mds, chr=c, order=mds.ord, maxit = 10000, tol=1e-5)
+plotRF(population_Z006.mds, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.mds, chr = c)
+```
+
+```{r}
+(loglik.mds[c] <- attr(population_Z006.mds$geno[[c]]$map, "loglik"))
+```
+
+## Grupo de ligação 4
+
+```{r}
+c <- 4
+mds.ord <- getMDSorder(cross = population_Z006.mds, chr = c)
+```
+
+```{r}
+population_Z006.mds <- switch.order(cross = population_Z006.mds, chr=c, order=mds.ord, maxit = 10000, tol=1e-5)
+plotRF(population_Z006.mds, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.mds, chr = c)
+```
+
+```{r}
+(loglik.mds[c] <- attr(population_Z006.mds$geno[[c]]$map, "loglik"))
+```
+
+## Grupo de ligação 5
+
+```{r}
+c <- 5
+mds.ord <- getMDSorder(cross = population_Z006.mds, chr = c)
+```
+
+```{r}
+population_Z006.mds <- switch.order(cross = population_Z006.mds, chr=c, order=mds.ord, maxit = 10000, tol=1e-5)
+plotRF(population_Z006.mds, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.mds, chr = c)
+```
+
+```{r}
+(loglik.mds[c] <- attr(population_Z006.mds$geno[[c]]$map, "loglik"))
+```
+
+## Grupo de ligação 6
+
+```{r}
+c <- 6
+mds.ord <- getMDSorder(cross = population_Z006.mds, chr = c)
+```
+
+```{r}
+population_Z006.mds <- switch.order(cross = population_Z006.mds, chr=c, order=mds.ord, maxit = 10000, tol=1e-5)
+plotRF(population_Z006.mds, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.mds, chr = c)
+```
+
+```{r}
+(loglik.mds[c] <- attr(population_Z006.mds$geno[[c]]$map, "loglik"))
+```
+
+## Grupo de ligação 7
+
+```{r}
+c <- 7
+mds.ord <- getMDSorder(cross = population_Z006.mds, chr = c)
+```
+
+```{r}
+population_Z006.mds <- switch.order(cross = population_Z006.mds, chr=c, order=mds.ord, maxit = 10000, tol=1e-5)
+plotRF(population_Z006.mds, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.mds, chr = c)
+```
+
+```{r}
+(loglik.mds[c] <- attr(population_Z006.mds$geno[[c]]$map, "loglik"))
+```
+
+## Grupo de ligação 8
+
+```{r}
+c <- 8
+mds.ord <- getMDSorder(cross = population_Z006.mds, chr = c)
+```
+
+```{r}
+population_Z006.mds <- switch.order(cross = population_Z006.mds, chr=c, order=mds.ord, maxit = 10000, tol=1e-5)
+plotRF(population_Z006.mds, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.mds, chr = c)
+```
+
+```{r}
+(loglik.mds[c] <- attr(population_Z006.mds$geno[[c]]$map, "loglik"))
+```
+
+## Grupo de ligação 9
+
+```{r}
+c <- 9
+mds.ord <- getMDSorder(cross = population_Z006.mds, chr = c)
+```
+
+```{r}
+population_Z006.mds <- switch.order(cross = population_Z006.mds, chr=c, order=mds.ord, maxit = 10000, tol=1e-5)
+plotRF(population_Z006.mds, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.mds, chr = c)
+```
+
+```{r}
+(loglik.mds[c] <- attr(population_Z006.mds$geno[[c]]$map, "loglik"))
+```
+
+## Grupo de ligação 10
+
+```{r}
+c <- 10
+mds.ord <- getMDSorder(cross = population_Z006.mds, chr = c)
+```
+
+```{r}
+population_Z006.mds <- switch.order(cross = population_Z006.mds, chr=c, order=mds.ord, maxit = 10000, tol=1e-5)
+plotRF(population_Z006.mds, chr=c, col.scheme = "redblue")
+```
+
+```{r}
+pull.map(population_Z006.mds, chr = c)
+```
+
+```{r}
+(loglik.mds[c] <- attr(population_Z006.mds$geno[[c]]$map, "loglik"))
+```
+
+# Ajustes manuais da orderMarkers
+
+```{r}
+knitr::kable(cbind(summaryMap(population_Z006.mds), log.likelihood=c(loglik.mds, sum(loglik.mds))))
+```
+
+```{r}
+plotMap(population_Z006.mds)
+```
+
+```{r}
+plotRF(population_Z006.mds, col.scheme = "redblue")
+```
+
+```{r}
+save.image("population_Z006_mds.RData") 
+```
+
+
+# Mapeamento QTL
+
+Aqui, estamos usando a linha de raça recombinante (RIL) população Z006, de modo que esses métodos podem não levar aos mesmos resultados em sua população.
+
+```{r}
+library(qtl)
+load("population_Z006_mds.RData")
+```
+
+```{r}
+summaryMap(population_Z006.mds)
+```
+
+```{r}
+plot.map(population_Z006.mds)
+```
+
+```{r}
+plotRF(population_Z006.mds, col.scheme = "redblue")
+```
+
+
+# Análise de marcadores únicos
+
+Nossa primeira análise envolve testes para associações entre cada marcador e o traço "PlantHeight". Fazemos isso executando a função com , que significa "regressão de marcador":scanone()method = "mr"
+
+```{r}
+population_Z006.mr <- scanone(population_Z006.mds, pheno.col = "PlantHeight", method = "mr")
+```
+
+Existem funções chamadas e que podem ser aplicadas a qualquer objeto de mapeamento QTL. A função combinada com o argumento mostra a estatística de teste (pontuação LOD) para cada marcador como pontos.plot()summary()plot()type = "p"
+
+```{r}
+plot(population_Z006.mr, type = "p", main = "Análise de Marcador Simples")
+```
+
+```{r}
+summary(population_Z006.mr)
+```
+
+```{r}
+population_Z006.perm.mr <- scanone(cross = population_Z006.mds, pheno.col = "PlantHeight", method = "mr",
+    n.perm = 1000, verbose = FALSE)
+```
+
+O resumo da função mostra os marcadores com a maior pontuação lod para cada cromossomo:
+
+```{r}
+plot(population_Z006.perm.mr)
+```
+
+Testes de permutação podem fornecer um valor crítico que pode ser usado para declarar QTL. No nosso caso, usamos , o que significa que estamos executando 1.000 permutações:n.perm = 1000
+
+A função mostra o limiar LOD para um determinado summary()
+
+```{r}
+summary(population_Z006.perm.mr, alpha = 0.05)
+```
+
+Finalmente, podemos aplicar esse limite e ver quantos QTL temos baseado no SMA:
+
+```{r}
+population_Z006.mr.sig <- summary(population_Z006.mr, perms = population_Z006.perm.mr, alpha = 0.05)
+knitr::kable(population_Z006.mr.sig)
+```
+A tabela apresentam os maiores valores de LOD para cada um dos grupos de ligação. Há uma correspondência entre as posições apontadas pelos dois métodos, se nos intervalos a posição não foi a mesma entre os métodos, é possível verificar que são bem aproximadas.
+
+
+# Mapeamento de intervalo
+
+Para executar o IM, precisamos calcular a probabilidade de genótipo QTL dentro de intervalos de marcadores, condicionadas no mapa genético. Fazemos isso usando a função. O argumento define o tamanho da etapa em que a probabilidade precisa ser calculada (no nosso caso, a cada 1 cM):calc.genoprob()step = 1
+
+```{r}
+population_Z006.mds <- calc.genoprob(cross = population_Z006.mds, step = 1)
+```
+
+A função para executar O mapeamento de intervalo é - a mesma para análise de marcadores únicos -, mas precisamos definir o método de estimativa como (máxima probabilidade via algoritmo de Maximização de Expectativa) ou (menos quadrados via regressão Haley-Knott). Podemos correr porque é mais rápido e geralmente funciona bem quando comparado com :scanone () em hk method = "hk" em
+
+
+```{r}
+population_Z006.im <- scanone(cross = population_Z006.mds, pheno.col = "PlantHeight", method = "hk")
+summary(population_Z006.im)
+```
+
+Para saber o valor crítico para declarar QTL usando permutações, primeiro executamos a função com os argumentos e:scanone () method = "hk" n.perm = 1000
+
+```{r}
+population_Z006.perm.im <- scanone(cross = population_Z006.mds, pheno.col = "PlantHeight", method = "hk",
+    n.perm = 1000, verbose = FALSE)
+```
+
+Em seguida, a função mostra o limiar LOD para um determinado summary() αα nível (no nosso caso,):alpha = 0.05
+
+```{r}
+summary(population_Z006.perm.im, alpha = 0.05)
+```
+
+```{r}
+plot(population_Z006.im, col = "red", main = "Mapeamento de Intervalo")
+add.threshold(population_Z006.im, perms = population_Z006.perm.im, alpha = 0.05, col = "red")
+```
+
+Um enredo para comparar duas abordagens:
+
+```{r}
+plot(population_Z006.mr, population_Z006.im, type = c("p", "l"), col = c("black", "red"), main = "Análise de Marcador Simples vs Mapeamento de Intervalo")
+add.threshold(population_Z006.mr, perms = population_Z006.perm.mr, alpha = 0.05, lty = 2, col = "black")
+add.threshold(population_Z006.im, perms = population_Z006.perm.im, alpha = 0.05, col = "red")
+legend("topright", legend = c("AMS", "MP"), lty = c(2, 1), col = c("black", "red"))
+```
+Agora, podemos aplicar o limiar ao nosso objeto mapeamento de Intervalo, que dá uma lista das regiões QTL que são altamente significativas:
+
+```{r}
+population_Z006.im.sig <- summary(population_Z006.im, perms = population_Z006.perm.im, alpha = 0.05)
+population_Z006.im.sig
+```
+
+Observe que podemos usar para extrair os cromossomos () e posições () de nossa QTL significativa: population_Z006.im.sig. sig chr pos
+
+```{r}
+chr <- population_Z006.im.sig$chr
+pos <- population_Z006.im.sig$pos
+```
+
+Finalmente, o e são usados para mostrar as estimativas de efeito QTL para uma população RIL com base em um objeto derivado da função: makeqtl() fitqtl() sim.geno()
+
+```{r}
+population_Z006.mds <- sim.geno(cross = population_Z006.mds, step = 1)
+population_Z006.im.qtl <- makeqtl(cross = population_Z006.mds, chr = chr, pos = pos)
+population_Z006.im.qtl
+```
+
+Se quisermos saber o efeito da QTL, e usarmos a função com o argumento, e, respectivamente:Q1 Q2 Q3 fitqtl() formula = y ~ Q1 formula = y ~ Q2 formula = y ~ Q3
+
+```{r}
+population_Z006.im.fit.Q1 <- fitqtl(cross = population_Z006.mds, pheno.col = "PlantHeight", qtl = population_Z006.im.qtl,
+    formula = y ~ Q1, get.ests = TRUE)
+summary(population_Z006.im.fit.Q1)
+```
+
+```{r}
+population_Z006.im.fit.Q2 <- fitqtl(cross = population_Z006.mds, pheno.col = "PlantHeight", qtl = population_Z006.im.qtl,
+    formula = y ~ Q2, get.ests = TRUE)
+summary(population_Z006.im.fit.Q2)
+```
+
+```{r}
+population_Z006.im.fit.Q3 <- fitqtl(cross = population_Z006.mds, pheno.col = "PlantHeight", qtl = population_Z006.im.qtl,
+    formula = y ~ Q3, get.ests = TRUE)
+summary(population_Z006.im.fit.Q3)
+```
+
+```{r}
+population_Z006.im.fit.Q4 <- fitqtl(cross = population_Z006.mds, pheno.col = "PlantHeight", qtl = population_Z006.im.qtl,
+    formula = y ~ Q4, get.ests = TRUE)
+summary(population_Z006.im.fit.Q4)
+```
+
+Estas seriam a expressão exata do modelo de QTL único como o método mapeamento de intervalo é. Ou seja, valores não podem ser somados. Foram estimados de forma independente e, portanto, não contabilizam a covariância entre os efeitos.
+
+Uma maneira melhor de saber a quantidade de variação explicada pelos três QTL é construindo um modelo QTL múltiplo:
+
+```{r}
+population_Z006.im.fit <- fitqtl(cross = population_Z006.mds, pheno.col = "PlantHeight", qtl = population_Z006.im.qtl,
+    formula = y ~ Q1 + Q2 + Q3 + Q4, get.ests = TRUE)
+summary(population_Z006.im.fit)
+```
+
+```{r}
+save.image("population_Z006_im.RData")
+```
+
+# Mapeamento de intervalos compostos
+
+Para executar CIM, existe uma função chamada . Nesta função, precisamos especificar dois argumentos principais: cim()
+
+O número de cofatores ou marcadores covariados: , que podem ser dados como n.marcovar 2×N−−√≈272×N−−√≈27.
+O tamanho da janela: , que podem ser valores diferentes dependendo do tamanho da população e saturação do mapa. Geralmente vai de 5 a 15 cM, mas pode ir até 20 ou 30 cM, ou tomar todo o cromossomo (ou seja, deixar um cromossomo fora - LOCO). window
+
+```{r}
+population_Z006.cim10 <- cim(cross = population_Z006.mds, pheno.col = "PlantHeight", method = "hk", n.marcovar = 2 *
+    sqrt(nind(population_Z006)), window = 10)
+population_Z006.cim15 <- cim(cross = population_Z006.mds, pheno.col = "PlantHeight", method = "hk", n.marcovar = 2 *
+    sqrt(nind(population_Z006)), window = 15)
+population_Z006.cim20 <- cim(cross = population_Z006.mds, pheno.col = "PlantHeight", method = "hk", n.marcovar = 2 *
+    sqrt(nind(population_Z006)), window = 20)
+population_Z006.cimInf <- cim(cross = population_Z006.mds, pheno.col = "PlantHeight", method = "hk",
+    n.marcovar = 2 * sqrt(nind(population_Z006.mds)), window = Inf)
+```
+
+```{r}
+summary(population_Z006.cim10)
+```
+
+```{r}
+summary(population_Z006.cim15)
+```
+
+```{r}
+summary(population_Z006.cim20)
+```
+
+```{r}
+summary(population_Z006.cimInf)
+```
+
+A fim de fazer os testes de permutação serem menos conservadores e fazê-los funcionar para qualquer tamanho de janela, podemos escolher . Isso significa que não serão permitidos cofatores com o grupo de vinculação onde os testes estão sendo realizados: window = Inf
+
+
+```{r}
+set.seed(8617)
+population_Z006.perm.cim <- cim(cross = population_Z006.mds, pheno.col = "PlantHeight", method = "hk",
+    n.marcovar = 2 * sqrt(nind(population_Z006.mds)), window = Inf, n.perm = 1000)
+```
+
+Você pode usar mais threads de computador se acontecer de você ter um computador com vários núcleos usando o argumento (por exemplo), para que os testes de permutaion sejam executados mais rápido. n.clustern. cluster = 4
+
+```{r}
+summary(population_Z006.perm.cim, alpha = 0.05)
+```
+
+Agora, se usarmos esses resultados de permutação para identificar o QTL mais significativo, temos:
+
+```{r}
+summary(population_Z006.cim10, perms = population_Z006.perm.cim, alpha = 0.05)
+```
+
+```{r}
+summary(population_Z006.cim15, perms = population_Z006.perm.cim, alpha = 0.05)
+```
+
+```{r}
+summary(population_Z006.cim20, perms = population_Z006.perm.cim, alpha = 0.05)
+```
+
+```{r}
+summary(population_Z006.cimInf, perms = population_Z006.perm.cim, alpha = 0.05)
+```
+
+```{r}
+plot(population_Z006.cim10, population_Z006.cim15, population_Z006.cimInf, col = c("blue", "orange", "cyan"), main = "Mapeamento de Intervalo Composto")
+add.threshold(population_Z006.cim10, perms = population_Z006.perm.cim, alpha = 0.05)
+legend("topright", legend = c("ws = 10", "ws = 15", "ws = Inf"), lty = 1, col = c("blue",
+    "orange", "cyan"))
+```
+
+Porque não declaramos a maior parte da QTL que achamos que são verdadeiras, e tem os mesmos resultados que, nós os retiramos da trama. Podemos comparar nossos resultados de CIM quando e com nossos resultados de mapeamento de intervalo: population_Z006cim20 population_Z006.cim15 population_Z006.cimInf. window = Inf
+
+```{r}
+plot(population_Z006.im, population_Z006.cim10, population_Z006.cimInf, col = c("red", "blue", "cyan"), main = "Mapeamento de Intervalo vs Mapeamento de Intervalo Composto")
+add.threshold(population_Z006.cim10, perms = population_Z006.perm.cim, alpha = 0.05)
+add.threshold(population_Z006.im, perms = population_Z006.perm.im, alpha = 0.05, col = "red")
+legend("topright", legend = c("MI", "MIC (ws = 10)", "MIC (ws = Inf)"), lty = 1,
+    col = c("red", "blue", "cyan"))
+```
+
+Também podemos limitar a visualização a cromossomos onde qtl apareceu nas análises mapeamento de intervalo vs mapeamento de intervalo composto:
+
+```{r}
+plot(population_Z006.im, population_Z006.cim10, population_Z006.cimInf, col = c("red", "blue", "cyan"), chr = c(1, 3, 4, 7, 10), main = "Mapeamento de Intervalo vs Mapeamento de Intervalo Composto")
+add.threshold(population_Z006.im, perms = population_Z006.perm.im, alpha = 0.05, col = "red")
+add.threshold(population_Z006.cim10, perms = population_Z006.perm.cim, alpha = 0.05, col = "black")
+add.cim.covar(population_Z006.cimInf, chr = c(1, 3, 4, 7, 10), col = "green")
+legend("topleft", legend = c("MI", "MIC (ws = 10)", "MIC (ws = Inf)"), lty = 1, col = c("red",
+    "blue", "cyan"))
+```
+
+Os pontos verdes representam a localização dos marcadores selecionados como covariados (cofatores) para a pesquisa do mapeamento de intervalo composto com.window = Inf
+
+Notei que o QTL no cromossomo 1 e 3 que identificamos usando mapeamento de intervalo está logo abaixo do limiar para a análise do mapeamento de intervalo composto - por isso os chamamos de QTL suggetive aqui. Dependendo da decisão do pesquisador, poderíamos abaixar um pouco o limiar para incluí-lo como um QTL usando mapeamento de intervalo composto, o que provavelmente está bem. Veremos, no entanto, uma maneira melhor de lidar com isso ao executar um modelo de QTL múltiplo, que é o nosso próximo tópico.
+
+Neste momento, suponhamos que queremos investigar as estimativas de QTL sob mapeamento de intervalo composto. Só precisamos armazenar os cromossomos QTL e posições do nosso modelo selecionado (mapeamento de intervalo composto com window = 10ws=10ws=10):
+
+```{r, eval=FALSE}
+set.seed(8617)
+population_Z006.cim.sig <- summary(population_Z006.cim20, perms = population_Z006.perm.cim, alpha = 0.05)
+population_Z006.cim.sig
+```
+
+No entanto, nottei que apenas um QTL no cromossomo 7 está listado (aquele com maior pontuação lod). Precisamos encontrar o outro olhando para as posições naquele cromossomo que tem uma pontuação LOD maior que o nosso limiar de 7.29:
+
+```{r}
+peak.markers <- which(population_Z006.cim10$lod[population_Z006.cim10$chr == 7] > 7.29)
+population_Z006.cim10$lod[peak.markers]
+```
+
+```{r}
+population_Z006.cim10$pos[peak.markers]
+```
+
+
+Para mostrar as estimativas de efeito QTL para uma população RIL, precisamos usarmos a função, então e: sim.geno() makeqtl() fitqtl()
+
+```{r}
+population_Z006.mds <- sim.geno(population_Z006.mds, step = 1)
+population_Z006.cim.qtl <- makeqtl(cross = population_Z006.mds, chr = chr, pos = pos)
+population_Z006.cim.qtl
+```
+
+```{r}
+population_Z006.cim.fit <- fitqtl(cross = population_Z006.mds, pheno.col = "PlantHeight", qtl = population_Z006.cim.qtl,
+    formula = y ~ Q1 + Q2 + Q3, get.ests = TRUE)
+summary(population_Z006.cim.fit)
+```
+
+```{r}
+save.image("population_Z006_mds.RData")
+```
+
+Teremos maneiras melhores de verificar se há outros QTL nos cromossomos 1 e 3 sob a abordagem do modelo de Mapeamento de Intervalo Múltiplo.
+
+# Mapeamento de intervalo múltiplo 
+
+O Mapeamento de intervalo Multiplo usa vários intervalos de marcadores simultaneamente para ajustar vários QTL putativos diretamente no modelo para mapeamento de QTL.
+
+Aqui, estou usando a linha de raça recombinante (RIL) população Z006, de modo que esses métodos podem não levar aos mesmos resultados em sua população.
+
+```{r}
+library(qtl)
+load("population_Z006_mds.RData")
+```
+
+```{r}
+summaryMap(population_Z006.mds)
+```
+
+```{r}
+plotMap(population_Z006.mds)
+```
+
+```{r}
+plotRF(population_Z006.mds, col.scheme = "redblue")
+```
+
+
+# Adicionando os principais efeitos manualmente.
+
+R/qtl tem várias funções para lidar com modelos de QTL múltiplos. Vamos focar em alguns deles que são mais interessantes para este conjunto de dados específico.
+
+## makeqtl e fitqtl
+
+Usei os resultados da execução qtl anterior, ou seja, mapeamento de intervalo composto.
+
+Primeiro, podemos dar uma olhada no objeto (anteriormente nomeado ) do mapeamento de intervalo composto com execução: population_Z006.cim10
+
+```{r}
+summary(population_Z006.cim10, perms = population_Z006.perm.cim, alpha = 0.05)
+```
+
+
+Notei que quatro picos tinham pontuação lod maior que nosso limiar cim de 7,29. No entanto, apenas um pico foi listado acima (o com a maior pontuação lod). Uma maneira de encontrar as outras posições é olhando para a pontuação máxima de LOD para posições no final do cromossomo 1 (posição \> 150 cM):
+
+```{r}
+max(population_Z006.cim10[population_Z006.cim10$chr == 1 & population_Z006.cim10$pos > 150, ])
+```
+
+```{r}
+chr <- c(1, 1, 4, 7, 10)
+pos <- c(24, 192, 113, 77, 68.0)
+```
+
+Para construir um modelo de QTL múltiplo, precisamos usar a função, então: calc.genoprob() makeqtl()
+
+```{r}
+population_Z006.mds <- calc.genoprob(cross = population_Z006.mds, step = 1)
+population_Z006.qtl <- makeqtl(cross = population_Z006.mds, chr = chr, pos = pos)
+population_Z006.qtl
+```
+
+A partir das avaliações consideraremos os seguintes QTLs e suas interações.
+
+```{r}
+plot(population_Z006.qtl)
+```
+
+Então, encaixei esse modelo usando a função: fitqtl()
+
+```{r}
+population_Z006.fit <- fitqtl(cross = population_Z006.mds, pheno.col = "PlantHeight", qtl = population_Z006.qtl,
+    formula = y ~ Q1 + Q2 + Q3 + Q4 + Q5, get.ests = TRUE)
+summary(population_Z006.fit)
+```
+
+Podemos observar que o QTL no cromossomo 1 e algumas das interações sugeridas não foram significativas ao nível de 5%, portanto podemos desconsiderá-los do modelo.
+
+## refineqtl e plotLodProfile
+
+Toda vez que é encaixado um novo modelo de QTL múltiplo, recomenda-se que refinemos as posições de pico QTL porque pode haver alterações ao testar cada QTL condicional ao outro QTL no modelo. Executamos esta tarefa usando a função e plotamos os resultados usando: refineqtl() plotLodProfile()
+
+```{r}
+population_Z006.ref <- refineqtl(cross = population_Z006.mds, pheno.col = "PlantHeight", qtl = population_Z006.qtl,
+    formula = y ~ Q1 + Q2 + Q3 + Q4 + Q5)
+```
+
+```{r}
+plotLodProfile(population_Z006.ref)
+```
+
+Em seguida, foi feito outra rodada de testes atualizados para as novas posições: fitqtl()
+
+```{r}
+population_Z006.fit2 <- fitqtl(cross = population_Z006.mds, pheno.col = "PlantHeight", qtl = population_Z006.ref,
+    formula = y ~ Q1 + Q2 + Q3 + Q4 + Q5, get.ests = TRUE)
+summary(population_Z006.fit2)
+```
+
+## scantwo
+
+Para adicionar efeitos principais ou epistáticos, precisamos descobrir qual é a "regra de parada". Em R/qtl, tal regra é dada por pontuação de LOD penalizada para um modelo com mais de um QTL (função ) fornecido por permutações (). Esta função leva muito tempo para ser executada: scantwon.perm = 1000
+
+```{r}
+set.seed(8617)
+permo.2dim <- scantwo(population_Z006.mds, pheno.col = "PlantHeight", method = "hk", n.perm = 1000)
+save(permo.2dim, file = "permo_2dim.RData")
+```
+É sempre bom salvar saídas de permutação devido ao tempo que essas funções levam para serem executadas, para que você possa usar os resultados para a mesma característica mais tarde.
+
+Agora, podemos ver um resumo do objeto e calcular as penalidades que serão usadas para pesquisa automática de modelos de vários QTL.
+
+```{r}
+load("permo_2dim.RData")
+summary(permo.2dim, alpha = 0.05)
+```
+
+```{r}
+penalties <- calc.penalties(permo.2dim)
+penalties
+```
+
+Limiares derivados de permutações (ou seja, para um escaneamento bidimensional do genoma de dois QTL) são usados para calcular penalidades sobre os principais efeitos e interações. Olhe para saber mais sobre as penalidades. Você também pode encontrar uma explicação detalhada sobre este critério por Manichaikul et al. (2009). scantwo help(calc.penalties)
+
+## addqtl
+
+E o QTL on cromossomo 7? Se quisermos verificar se há mais QTL a ser adicionado ao modelo, podemos usar a função :addqtl()
+
+```{r}
+population_Z006.add <- addqtl(population_Z006.mds, pheno.col = "PlantHeight", qtl = population_Z006.ref, formula = y ~
+    Q1 + Q2 + Q3 + Q4 + Q5)
+max(population_Z006.add)
+```
+
+O LOD \> 3 parece grande o suficiente para incluir essa posição, já que o limite para adicionar um efeito principal av1= 3,06 (LOD "leve" para efeitos principais). Então, vamos adicioná-lo ao modelo.
+
+```{r}
+chr <- c(1, 1, 4, 7, 10)
+pos <- c(24, 192, 113, 77, 68.0)
+population_Z006.qtl2 <- makeqtl(cross = population_Z006.mds, chr = chr, pos = pos)
+population_Z006.qtl2
+```
+
+```{r}
+plot(population_Z006.qtl2)
+```
+
+Lembre-se que quando um QTL é adicionado, pode-se precisar refinar posições novamente usando a função: refineqtl()
+
+```{r}
+population_Z006.ref2 <- refineqtl(cross = population_Z006.mds, pheno.col = "PlantHeight", qtl = population_Z006.qtl2,
+    formula = y ~ Q1 + Q2 + Q3 + Q4 + Q5)
+```
+
+```{r}
+plotLodProfile(population_Z006.ref2)
+```
+
+```{r}
+population_Z006.add2 <- addqtl(population_Z006.mds, pheno.col = "PlantHeight", qtl = population_Z006.ref2, formula = y ~
+    Q1 + Q2 + Q3 + Q4 + Q5)
+max(population_Z006.add2)
+```
+
+Porque o LOD é inferior ao nosso limiar de 3.06, então paramos aqui e podemos tentar adicionar efeitos epistáticos em seguida.
+
+
+# Adicionando efeitos principais automaticamente
+
+## stepwiseqtl
+
+As penalidades para as pontuações de LOD penalizadas agora podem ser usadas por: stepwiseqtl
+
+```{r}
+population_Z006.step <- stepwiseqtl(population_Z006.mds, pheno.col = "PlantHeight", max.qtl = 6, method = "hk",
+    penalties = penalties)
+```
+
+```{r}
+population_Z006.step
+```
+
+# Adicionando epistasia
+
+Na corrida acima, já testamos interações entre QTL no modelo (e não foram encontradas interações). stepwiseqtl
+
+## addint
+
+No caso de nossa pesquisa manual, a QTL interativa ainda não foi testada. Uma maneira de procurar explicitamente a epistasis é usando a função, por isso usamos nosso objeto: addint() population_Z006.ref
+
+```{r}
+addint(population_Z006.mds, pheno.col = "PlantHeight", qtl = population_Z006.ref2, formula = y ~ Q1 +
+    Q2 + Q3 + Q4 +Q5)
+```
+
+Como todos os LODs estão abaixo de 4,21 ( limiar de LOD de nossas permutações acima), determinamos que não há evidência de epistasis entre os QTL.
+
+## scantwo
+
+Olhar para interações epistáticas entre QTL com efeitos principais é muito limitador. Então, podemos usar a função para procurar evidências de interações por todo o genoma. Além disso, devemos ser capazes de separar pares de QTL ligados com tal função.scantwo()
+
+Por se trata de uma pesquisa muito computacionalmente intensiva, usamos para acelerar um pouco o processo: step = 2
+
+```{r}
+population_Z006.mds <- calc.genoprob(population_Z006.mds, step = 2)
+population_Z006.two <- scantwo(population_Z006.mds, pheno.col = "PlantHeight", method = "hk")
+save(population_Z006.two, file = "population_Z006_two.RData")
+```
+
+```{r}
+load("population_Z006_two.RData")
+plot(population_Z006.two, col.scheme = "redblue")
+```
+
+```{r}
+summary(population_Z006.two)
+
+```
+
+A partir do gráfico e resumo acima, não há interações entre os loci nos cromossomos.
+
+```{r}
+chr <- c(1, 1, 4, 7, 10)
+pos <- c(24, 192, 113, 77, 68.0)
+population_Z006.qtl3 <- makeqtl(cross = population_Z006.mds, chr = chr, pos = pos)
+population_Z006.qtl3
+```
+
+```{r}
+population_Z006.ref3 <- refineqtl(cross = population_Z006.mds, pheno.col = "PlantHeight", qtl = population_Z006.qtl3,
+    formula = y ~ Q1 + Q2 + Q3 + Q4 +Q5)
+```
+
+```{r}
+summary(population_Z006.ref3)
+```
+
+```{r}
+plotLodProfile(population_Z006.ref3)
+```
+
+```{r}
+population_Z006.fit3 <- fitqtl(cross = population_Z006.mds, pheno.col = "PlantHeight", qtl = population_Z006.ref3,
+    formula = y ~ Q1 + Q2 + Q3 + Q4 +Q5, get.ests = TRUE)
+summary(population_Z006.fit3)
+```
+
