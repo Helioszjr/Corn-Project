@@ -1,0 +1,79 @@
+---
+title: "Análise de ligação e de QTL de uma população de linhagens endogâmicas recombinantes (RIL) originada de uma nested-association mapping (NAM) de milho"
+author:  Helio de Souza Junior ^[Federal Universidade Federal de Viçosa, helio.d.junior@ufv.br]
+date: '2022-06-14'
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE, cache.lazy = FALSE, warning = FALSE)
+```
+
+Este projeto foi proposto na disciplina FIT 678 - Análise de dados genéticos no melhoramento de plantas da UFV, ministrada pelo Prof. Guilherme da Silva Pereira. 
+
+
+O propósito desse projeto foi realizar análises de ligação e de QTL em um conjunto de dados reais. O objetivo é realizar uma Análise de ligação I: segregação de marcadores, cálculo da fração de recombinação dois-pontos, e formação dos grupos de ligação; Análise de ligação II: ordenação dos marcadores; Análise de QTL I: análise de marcas individuais; Análise de QTL II: mapeamento por intervalo;  Análise de QTL III: mapeamento por intervalo composto e Análise de QTL IV: mapeamento por múltiplos intervalos.
+
+
+## DADOS DO MILHO 
+Trata de uma população  RIL com 1142 marcadores em 194 indivíduos e foram avaliados ? fenótipos que consistem na característica da altura da planta.
+
+```{r}
+library(readr)
+population_Z001 <- read_csv("population_Z001.csv")
+dim(population_Z001)
+View(population_Z001)
+```
+
+
+```{r}
+pheno <- population_Z001[, 1142:ncol(population_Z001)]
+colnames(pheno)
+geno <- population_Z001[,-c(1, 1142:ncol(population_Z001))]
+dim(geno)
+```
+
+
+```{r}
+geno[geno == 0] <- "A"
+geno[geno == 1] <- "-"
+geno[geno == 2] <- "B"
+geno[is.na(geno)] <- "-"
+geno[1:10,1:10]
+```
+
+
+```{r}
+write.table("data type riself", file = "population_Z001.raw", row.names = FALSE, col.names = FALSE, quote = FALSE)
+write.table(paste(c(nrow(geno), ncol(geno), ncol(pheno)), collapse = " "), file = "population_Z001.raw", row.names = FALSE, col.names = FALSE, quote = FALSE, append = TRUE)
+for(m in 1:ncol(geno)) {
+  write.table(paste(paste0("*", colnames(geno)[m]), paste(geno[,m], collapse = " "), collapse = "\n", sep = " "), file = "population_Z001.raw", row.names=FALSE, col.names=FALSE, quote = FALSE, append=TRUE)
+}
+for(p in 1:ncol(pheno)) {
+  write.table(paste(paste0("*", colnames(pheno)[p]), paste(pheno[,p], collapse = " "), collapse = "\n", sep = " "), file = "population_Z001.raw", row.names=FALSE, col.names=FALSE, quote = FALSE, append=TRUE)
+}
+```
+
+
+Ordenação de marcadores com R/onemap
+Carregando o pacote onemap:
+
+```{r}
+install.packages("onemap")
+library(onemap)
+```
+
+
+carregando o conjunto de dados formatados usando a read_mapmaker()função:
+```{r}
+population_Z001 <- read_mapmaker("population_Z001.raw")
+```
+
+
+
+
+
+
+
