@@ -3,7 +3,7 @@ Este projeto foi proposto na disciplina FIT 678 - Análise de dados genéticos n
 
 O propósito desse trabalho foi realizar análises de ligação e de QTL em um conjunto de dados de milho. O objetivo é realizar uma Análise de ligação I: segregação de marcadores, cálculo da fração de recombinação dois-pontos, e formação dos grupos de ligação; Análise de ligação II: ordenação dos marcadores; Análise de QTL I: análise de marcas individuais; Análise de QTL II: mapeamento por intervalo;  Análise de QTL III: mapeamento por intervalo composto e Análise de QTL IV: mapeamento por múltiplos intervalos.
 
-# Referências Bibliográficas para se aprofundar
+# Referências bibliográficas para se aprofundar
 
 1. Broman, K. W. (2008). *New functions for exploring multiple-QTL models*. Documento técnico complementar ao pacote **R/qtl**. Última revisão em 26 de outubro de 2010.
 
